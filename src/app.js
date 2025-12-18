@@ -17,22 +17,22 @@ app.use("/user", [
     next();
   },
   (req, res, next) => {
-    console.log("this is second route handler 1");
+    console.log("this is second route handler 2");
     //res.send("route handler 2");
     next();
   },
   (req, res, next) => {
-    console.log("this is third route handler 1");
+    console.log("this is third route handler 3");
     //res.send("route handler 3");
     next();
   },
   (req, res, next) => {
-    console.log("this is fourth route handler 1");
+    console.log("this is fourth route handler 4");
     // res.send("route handler 4");
     next();
   },
   (req, res, next) => {
-    console.log("this is fifth route handler 1");
+    console.log("this is fifth route handler 5");
     res.send("route handler 5");
   },
 ]);
