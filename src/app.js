@@ -40,25 +40,22 @@
 // app.listen(port, () => {
 //   console.log(`Example app listening on port ${port}`);
 // });
+
+const adminAuth = require("./middleware/auth");
 const express = require("express");
 const app = express();
 const port = 3000;
 
 // Admin authentication middleware
-app.use("/admin", (req, res, next) => {
-  const token = "xyzabc";
-  const isAdminAuth = token === "xyz";
-
-  if (!isAdminAuth) {
-    return res.status(401).send("Unauthorized access");
-  } else {
-    next(); // move to next route
-  }
-});
+app.use("/admin", adminAuth);
 
 // Admin success route
 app.get("/admin/success", (req, res) => {
   res.send("Get API is called successfully");
+});
+
+app.get("/user", (req, res) => {
+  res.send("Get API is called successfully To The  User");
 });
 
 // Server start
