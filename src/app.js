@@ -1,69 +1,112 @@
 // const express = require("express");
+
+// const connectDB = require("./config/database");
+// const User = require("./models/User");
+// const mongoose = require("mongoose");
+// const bcrypt = require("bcrypt");
+
+// const { validationsignUpData } = require("./utilis/validation");
 // const app = express();
+
+// app.use(express.json());
 // const port = 3000;
 
-// app.get("/ap*i", (req, res) => {
-//   res.send("api is called by api url");
-// });
+// connectDB()
+//   .then(() => {
+//     console.log("database connection successfully ");
 
-// app.get("/", (req, res) => {
-//   res.send("Hello World!");
-// });
+//     app.post("/signup", async (req, res) => {
+//       try {
+//         validationsignUpData(req);
 
-// app.use("/user", [
-//   (req, res, next) => {
-//     console.log("this is first route handler 1");
-//     //res.send("route handler 1");
-//     next();
-//   },
-//   (req, res, next) => {
-//     console.log("this is second route handler 2");
-//     //res.send("route handler 2");
-//     next();
-//   },
-//   (req, res, next) => {
-//     console.log("this is third route handler 3");
-//     //res.send("route handler 3");
-//     next();
-//   },
-//   (req, res, next) => {
-//     console.log("this is fourth route handler 4");
-//     // res.send("route handler 4");
-//     next();
-//   },
-//   (req, res, next) => {
-//     console.log("this is fifth route handler 5");
-//     res.send("route handler 5");
-//   },
-// ]);
+//         const { firstName, lastName, emailId, password } = req.body; // 👈 data from Postman
+//         const passwordHash = await bcrypt.hash(password, 10);
+//         console.log(passwordHash);
 
-// app.listen(port, () => {
-//   console.log(`Example app listening on port ${port}`);
-// });
+//         const user = new User({
+//           firstName,
+//           lastName,
+//           emailId,
+//           password: passwordHash,
+//         });
+//         const savedUser = await user.save();
 
-//const adminAuth = require("./middleware/auth");
+//         res.status(201).json({
+//           message: "User created successfully",
+//           user: savedUser,
+//         });
+//       } catch (err) {
+//         res.status(400).json({
+//           error: err.message,
+//         });
+//       }
+//     });
+//     app.get("/users", async (req, res) => {
+//       const emailId = req.body.emailId;
+//       try {
+//         const users = await User.find({ emailId: emailId }); // fetch all users
+//         res.send(users);
+//       } catch (error) {
+//         res.status(500).json({ message: "Something went wrong" });
+//       }
+//     });
+
+//     app.delete("/users", async (req, res) => {
+//       const { id } = req.body;
+
+//       try {
+//         const user = await User.findByIdAndDelete(id);
+
+//         if (!user) {
+//           return res.status(404).json({
+//             message: "User not found",
+//           });
+//         }
+
+//         res.json({
+//           message: "User deleted successfully",
+//           deletedUser: user,
+//         });
+//       } catch (error) {
+//         res.status(400).json({
+//           error: error.message,
+//         });
+//       }
+//     });
+
+//     app.patch("/user", async (req, res) => {
+//       const { userId } = req.body;
+//       const data = req.body.data;
+//       try {
+//         await User.findByIdAndUpdate(userId, data);
+//         res.send("user updated");
+//       } catch (err) {
+//         res.send("something went to wrong");
+//       }
+//     });
+
+//     app.listen(port, () => {
+//       console.log(`Your server started on port ${port}`);
+//     });
+//   })
+//   .catch((err) => {
+//     console.error(" not connect to database ");
+//   });
+
 const express = require("express");
-
+const bcrypt = require("bcrypt"); // ✅ FIX 1
 const connectDB = require("./config/database");
 const User = require("./models/User");
-const mongoose = require("mongoose");
+const { validationsignUpData } = require("./utilis/validation");
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
+const { userAuth } = require("./middleware/auth");
+
 const app = express();
 app.use(express.json());
+app.use(cookieParser()); // ✅ REQUIRED for reading token from cookies
+
 const port = 3000;
-
-// // Admin authentication middleware
-// app.use("/admin", adminAuth);
-
-// // Admin success route
-// app.get("/admin/success", (req, res) => {
-//   res.send("Get API is called successfully");
-// });
-
-// app.get("/user", (req, res) => {
-//   res.send("Get API is called successfully To The  User");
-// });
-
-// Server start
 
 connectDB()
   .then(() => {
@@ -71,7 +114,20 @@ connectDB()
 
     app.post("/signup", async (req, res) => {
       try {
-        const user = new User(req.body); // 👈 data from Postman
+        validationsignUpData(req);
+
+        const { firstName, lastName, emailId, password, skill, age } = req.body;
+        const passwordHash = await bcrypt.hash(password, 10);
+
+        const user = new User({
+          firstName,
+          lastName,
+          emailId,
+          password: passwordHash,
+          skill,
+          age,
+        });
+
         const savedUser = await user.save();
 
         res.status(201).json({
@@ -80,20 +136,52 @@ connectDB()
         });
       } catch (err) {
         res.status(400).json({
-          error: err.message,
+          error: err.message, // ✅ FIXED
         });
       }
     });
-    app.get("/users", async (req, res) => {
-      const emailId = req.body.emailId;
+    app.post("/login", async (req, res) => {
       try {
-        const users = await User.find({ emailId: emailId }); // fetch all users
+        const { emailId, password } = req.body;
+        const user = await User.findOne({ emailId });
+
+        if (!user) {
+          throw new Error("invalid credentials");
+        }
+        const ispassword = await bcrypt.compare(password, user.password);
+        if (ispassword) {
+          const token = await jwt.sign({ _id: user._id }, "Dev@Tinder#123", {
+            expiresIn: "7d",
+          });
+          res.cookie("token", token, {
+            expires: new Date(Date.now() + 8 * 3600000),
+          }); //pass token inside the cookie
+          res.send("login successfully");
+        } else {
+          throw new Error("invalid credentials");
+        }
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+    app.post("/profile", userAuth, async (req, res) => {
+      try {
+        const user = req.user;
+        res.send(user);
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    app.get("/users", async (req, res) => {
+      const emailId = req.query.emailId; // ✅ FIX 2
+      try {
+        const users = await User.find({ emailId });
         res.send(users);
       } catch (error) {
         res.status(500).json({ message: "Something went wrong" });
       }
     });
-
     app.delete("/users", async (req, res) => {
       const { id } = req.body;
 
@@ -101,19 +189,50 @@ connectDB()
         const user = await User.findByIdAndDelete(id);
 
         if (!user) {
-          return res.status(404).json({
-            message: "User not found",
-          });
+          return res.status(404).json({ message: "User not found" });
         }
 
         res.json({
           message: "User deleted successfully",
           deletedUser: user,
         });
-      } catch (error) {
+      } catch (err) {
         res.status(400).json({
-          error: error.message,
+          error: err.message,
         });
+      }
+    });
+    app.patch("/user/:userId", async (req, res) => {
+      const { userId } = req.params;
+      const data = req.body;
+
+      try {
+        const allowedUpdate = ["photoUrl", "age", "about", "gender", "skill"];
+        const isUpdateAllowed = Object.keys(data).every((k) =>
+          allowedUpdate.includes(k)
+        );
+
+        if (!isUpdateAllowed) {
+          throw new Error("Update not allowed");
+        }
+
+        // skills validation
+        if (data?.skill?.length > 10) {
+          throw new Error("Skill cannot be more than 10");
+        }
+
+        const user = await User.findByIdAndUpdate(userId, data);
+
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json({
+          message: "User updated successfully",
+          updatedUser: user,
+        });
+      } catch (err) {
+        res.status(400).json({ error: err.message });
       }
     });
 
@@ -121,6 +240,6 @@ connectDB()
       console.log(`Your server started on port ${port}`);
     });
   })
-  .catch((err) => {
-    console.error(" not connect to database ");
+  .catch(() => {
+    console.error("not connect to database");
   });
