@@ -1,4 +1,5 @@
 const http = require("http");
+const { userAuth } = require("./src/middleware/auth");
 
 const server = http.createServer(function (req, res) {
   if (req.url === "/secretdata") {
