@@ -25,7 +25,7 @@ connectDB()
 
     app.listen(port, () => {
       console.log(`Your server started on port ${port}`);
-      console.log("JWT_SECRET:", process.env.JWT_SECRET);
+      // console.log("JWT_SECRET:", process.env.JWT_SECRET);
     });
   })
   .catch(() => {
